@@ -5,6 +5,7 @@ file_domain = 'domain_srb.txt'
 file_list = 'list_ab.txt'
 file_black_list = 'black_user_list.txt' # Исключение пользователей
 
+
 file_resources = 'resources.xml'
 file_config = 'config.xml'
 
