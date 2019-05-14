@@ -1,10 +1,16 @@
 #-*- coding: utf-8 -*-
 import re
+import os
 
 file_domain = 'domain_srb.txt'
 file_list = 'list_ab.txt'
-file_black_list = 'black_user_list.txt' # Исключение пользователей
 
+file_black_list = 'black_user_list.txt' # Исключение пользователей
+file_allowed_user = 'allowed_user.txt' # Разрешённые пользователи
+file_list_prev = 'list_prev.txt'
+mode_black_list = 'r+' if os.path.exists(file_black_list) else 'w+'
+mode_allowed_user = 'r+' if os.path.exists(file_allowed_user) else 'w+'
+mode_list_prev = 'r+' if os.path.exists(file_list_prev) else 'w+'
 
 file_resources = 'resources.xml'
 file_config = 'config.xml'
@@ -20,12 +26,13 @@ def delite_simbol_new_line(stroka):
         return stroka
 
 
-with open(file_resources, 'w') as f_resources, open(file_config, 'w') as f_config, open(file_domain, 'r') as f_domain, open(file_list, 'r') as f_list, open(file_black_list, 'r') as f_black_list:
+with open(file_resources, 'w') as f_resources, open(file_config, 'w') as f_config, open(file_domain, 'r') as f_domain, open(file_list, 'r') as f_list, open(file_black_list, mode_black_list) as f_black_list, open(file_allowed_user, mode_allowed_user) as f_allowed_user, open(file_list_prev, mode_list_prev) as f_list_prev:
     f_resources.write('<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<resources>\n')
     f_config.write('<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<routes>\n')
 
     domain = [delite_simbol_new_line(i) for i in f_domain.readlines()]
     black_list = [delite_simbol_new_line(i) for i in f_black_list.readlines()]
+    allowed_list = [delite_simbol_new_line(i) for i in f_allowed_user.readlines()]
     
     for line in f_list:
         flag_user_ignore = False
