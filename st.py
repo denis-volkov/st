@@ -2,6 +2,8 @@
 import re
 import os
 
+enable_rule = 'true'
+
 file_domain = 'domain_srb.txt'
 file_list = 'list_ab.txt'
 
@@ -31,29 +33,38 @@ with open(file_resources, 'w') as f_resources, open(file_config, 'w') as f_confi
     f_config.write('<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<routes>\n')
 
     domain = [delite_simbol_new_line(i) for i in f_domain.readlines()]
-    black_list = [delite_simbol_new_line(i) for i in f_black_list.readlines()]
+    black_list = [delite_simbol_new_line(i).split(':') for i in f_black_list.readlines()]
     allowed_list = [delite_simbol_new_line(i) for i in f_allowed_user.readlines()]
+    list_user = [delite_simbol_new_line(i).split()[0] for i in f_list.readlines()]
+    list_prev = [delite_simbol_new_line(i) for i in f_list_prev.readlines()]
+
+    # Из black_list удаляется запись NEW, если есть пользователь в allowed_list
+    for i in black_list[:]:
+        if len(i) == 2 and i[-1] == 'NEW':
+            if i[0] in allowed_list:
+                black_list.remove(i)
     
-    for line in f_list:
-        flag_user_ignore = False
-        line = line.strip()
+    # Очистка list_user от любых записей из black_list
+    for i in list_user[:]:
+        iu = i.split('/')[-2]
+        for ii in black_list:
+            if iu == ii[0]:
+                list_user.remove(i)
+    
+    for line in list_user:
         if not line:
             continue
-        line_part = line.split()[0]
         
-        if user_name == line_part.split('/')[-2]: # Уже обработанный юзер не нужен 
+        if user_name == line.split('/')[-2]: # Уже обработанный юзер не нужен 
             continue
 
-        user_name = line_part.split('/')[-2]
+        user_name = line.split('/')[-2]
 
-        for i in black_list:
-            if re.search(i, user_name, re.I):
-                flag_user_ignore = True
-                break
-
-        if flag_user_ignore:
+        if (user_name not in list_prev) and (user_name not in allowed_list):
+            black_list.extend([[user_name, 'NEW']])
             continue
 
+        # Генерация результирующих файлов
         for _ in range(4):
             res_num += 1
             f_resources.write('  <resource>\n    <ID>resource' + str(res_num) + '</ID>\n    <Name>' + user_name)
@@ -92,13 +103,13 @@ with open(file_resources, 'w') as f_resources, open(file_config, 'w') as f_confi
             f_resources.write('<SmbUser>temp</SmbUser>\n    <SmbPassword>temp</SmbPassword>\n    <SmbVersion>2.0</SmbVersion>\n    <Status>true</Status>\n    <Type>SMB</Type>\n  </resource>\n')
             
         #CONFIG.XML
-        f_config.write('  <route>\n    <active>false</active>\n    <Name>')
+        f_config.write('  <route>\n    <active>' + enable_rule +'</active>\n    <Name>')
         f_config.write(user_name + '_LAN_to_INET</Name>\n    <sourceResID>resource')
         f_config.write(str(res_num) + '</sourceResID>\n    <targetResID>resource')
         f_config.write(str(res_num-3) + '</targetResID>\n    ')
         f_config.write('<Threads>11</Threads>\n    <IncludeMaskFile></IncludeMaskFile>\n    <MaxFileSize/>\n    <Throttle>1000</Throttle>\n    <ThrottleTimePeriod>10000</ThrottleTimePeriod>\n    <IncludeMaskFolder/>\n    <Recursive>false</Recursive>\n    <ResendFileCount>10</ResendFileCount>\n    <ExcludeMaskFile/>\n    <ExcludeMaskFolder/>\n    <NeedToLog>true</NeedToLog>\n    <NeedsAVCheck>false</NeedsAVCheck>\n    <AvServerID>AVServerEntry2</AvServerID>\n    <SendToDLP>false</SendToDLP>\n    <DLPServerID>null</DLPServerID>\n    <ParseDLPResp>false</ParseDLPResp>\n    <Noop>false</Noop>\n    <ReadLock>exclusive</ReadLock>\n    <ResendMultiplyer>1</ResendMultiplyer>\n    <CalculateCheckSum>false</CalculateCheckSum>\n    <DoneFileTmplSource/>\n    <DoneFileTmplTarget/>\n    <MinDepth/>\n    <MaxDepth>1</MaxDepth>\n    <RemoveOnCommit>false</RemoveOnCommit>\n    <RemoveOnRollback>false</RemoveOnRollback>\n    <TransferFromErrorDir>5</TransferFromErrorDir>\n  </route>\n')
 
-        f_config.write('  <route>\n    <active>false</active>\n    <Name>')
+        f_config.write('  <route>\n    <active>' + enable_rule +'</active>\n    <Name>')
         f_config.write(user_name + '_INET_to_LAN</Name>\n    <sourceResID>resource')
         f_config.write(str(res_num-1) + '</sourceResID>\n    <targetResID>resource')
         f_config.write(str(res_num-2) + '</targetResID>\n    ')
@@ -107,3 +118,19 @@ with open(file_resources, 'w') as f_resources, open(file_config, 'w') as f_confi
                               
     f_resources.write('</resources>\n')
     f_config.write('</routes>')
+
+# Пересоздать list_prev и обновить black_list
+with open(file_list, 'r') as f_list, open(file_black_list, 'w') as f_black_list, open(file_list_prev, 'w') as f_list_prev:
+    for i in black_list:
+        f_black_list.write(':'.join(i) + '\n')
+    
+    list_user = set() # Чтобы убрать дубли пользователей
+    for i in f_list:
+        i = delite_simbol_new_line(i)
+        if not i:
+            continue
+        i = i.split()[0].split('/')[-2]
+        list_user.add(i)
+
+    for i in list_user:
+        f_list_prev.write(i + '\n')
